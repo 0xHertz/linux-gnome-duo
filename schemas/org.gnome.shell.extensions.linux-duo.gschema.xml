@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.linux-duo"
+          path="/org/gnome/shell/extensions/linux-duo/">
+    <key name="method" type="s">
+      <default>'camera'</default>
+      <summary>检测方案</summary>
+      <description>选择开合角度检测方案：camera（摄像头，默认）或 sonar（超声波）。</description>
+    </key>
+    <key name="blur-strength" type="d">
+      <default>0.08</default>
+      <summary>模糊强度</summary>
+      <description>折叠时屏幕顶部的模糊强度（0=无模糊，越大越模糊，底部始终清晰）。</description>
+    </key>
+  </schema>
+</schemalist>
