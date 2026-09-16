@@ -21,7 +21,7 @@ import numpy as np
 from common import SOCKET_PATH, serve, setup_socket
 
 FRAME_INTERVAL = 0.05
-SMOOTH_ALPHA = 0.20
+SMOOTH_ALPHA = 0.04
 FACE_ALPHA = 0.5
 CAMERA_INDEX = 0
 DEBUG_INTERVAL = 0.5
