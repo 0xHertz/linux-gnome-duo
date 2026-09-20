@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """摄像头开合角检测守护进程 (camera-based lid-fold angle daemon).
 
-打开笔记本摄像头检测屏幕开合：
-1. 检测到人脸 → 快速恢复到完全展开状态（角度 1.0）。
-2. 无人脸时 → 在人脸区域之外选择多个特征点，通过中位数纵向位移计算屏幕开合程度。
-3. 方案2：引入边缘预警与多点无缝基准继承 (Baseline Handover)，当点靠近边缘或移出画面时，
-   自动补点并继承之前的位移历史，彻底解决特征点全灭导致的角度跳变。
-角度经 Unix 域套接字广播给 GNOME Shell 扩展。
+打开笔记本摄像头检测屏幕开合： (Opens the laptop camera to detect the screen folding state:)
+1. 检测到人脸 → 快速恢复到完全展开状态（角度 1.0）。 (1. Face detected -> quickly recover to the fully unfolded state (angle 1.0).)
+2. 无人脸时 → 在人脸区域之外选择多个特征点，通过中位数纵向位移计算屏幕开合程度。 (2. No face -> select multiple feature points outside the face region and compute the folding degree from the median vertical displacement.)
+3. 方案2：引入边缘预警与多点无缝基准继承 (Baseline Handover)，当点靠近边缘或移出画面时， (3. Scheme 2: introduce edge pre-warning and multi-point Seamless Baseline Handover; when points approach the edge or leave the frame,)
+   自动补点并继承之前的位移历史，彻底解决特征点全灭导致的角度跳变。 (   automatically add new points and inherit the previous displacement history, fully eliminating angle jumps caused by all feature points being lost.)
+角度经 Unix 域套接字广播给 GNOME Shell 扩展。 (The angle is broadcast to the GNOME Shell extension over a Unix domain socket.)
 """
 
 import os
@@ -29,8 +29,8 @@ DEBUG_INTERVAL = 0.5
 
 class CameraTracker:
     """
-    通过“人脸区域以外的多个特征点”的纵向位移估算屏幕开合程度。
-    具备多点中位数抗噪与无缝基准继承 (Seamless Handover) 功能。
+    通过“人脸区域以外的多个特征点”的纵向位移估算屏幕开合程度。 (Estimates the screen folding degree from the vertical displacement of multiple feature points outside the face region.)
+    具备多点中位数抗噪与无缝基准继承 (Seamless Handover) 功能。 (Provides multi-point median anti-noise and Seamless Baseline Handover capability.)
     """
 
     def __init__(self, debug=False):
@@ -49,24 +49,24 @@ class CameraTracker:
         self._debug = debug
         self._last_debug = 0.0
 
-        # 光流多点状态
+        # 光流多点状态 (Optical-flow multi-point state)
         self._prev_gray = None
-        self._points = None  # shape: (N, 1, 2)
-        self._base_ys = None  # shape: (N,)
+        self._points = None  # 形状 shape: (N, 1, 2)
+        self._base_ys = None  # 形状 shape: (N,)
 
-        # 记录最后一次有效的纵向位移 (dy)，用于无缝继承
+        # 记录最后一次有效的纵向位移 (dy)，用于无缝继承 (Record the last valid vertical displacement (dy) for seamless handover)
         self._last_dy = 0.0
 
-        # 达到完全折叠时所对应的纵向像素位移
+        # 达到完全折叠时所对应的纵向像素位移 (Vertical pixel displacement corresponding to full folding)
         self._max_vertical_displacement = 500.0
 
-        # 光流参数
+        # 光流参数 (Optical-flow parameters)
         self._lk_win_size = (21, 21)
         self._lk_max_level = 3
 
-        # 多点跟踪参数
-        self._max_corners = 15  # 最多寻找特征点数
-        self._min_corners = 3  # 触发补点的最小有效点数
+        # 多点跟踪参数 (Multi-point tracking parameters)
+        self._max_corners = 15  # 最多寻找特征点数 (Maximum number of feature points to find)
+        self._min_corners = 3  # 触发补点的最小有效点数 (Minimum number of valid points that triggers re-seeding)
 
     @staticmethod
     def _load_cascade():
@@ -97,7 +97,7 @@ class CameraTracker:
         return None
 
     def _detect_face_mask(self, gray):
-        """返回人脸区域 mask，人脸只用于排除。"""
+        """返回人脸区域 mask，人脸只用于排除。 (Returns a face-region mask; the face is used only for exclusion.)"""
         mask = np.zeros_like(gray)
         if self._cascade is None:
             return mask
@@ -123,11 +123,11 @@ class CameraTracker:
         return mask
 
     def _find_tracking_points(self, gray, face_mask):
-        """在人脸之外寻找多点，增加 10% 的边缘安全缓冲区。"""
+        """在人脸之外寻找多点，增加 10% 的边缘安全缓冲区。 (Finds multiple points outside the face, adding a 10% edge safety buffer.)"""
         h, w = gray.shape
         feature_mask = np.full_like(gray, 255)
 
-        # 设置边缘安全缓冲区 (10%)，提前排除快要离开画面的边缘区域
+        # 设置边缘安全缓冲区 (10%)，提前排除快要离开画面的边缘区域 (Set a 10% edge safety buffer, excluding edge regions that are about to leave the frame in advance)
         margin_x = max(12, int(w * 0.10))
         margin_y = max(12, int(h * 0.10))
 
@@ -136,7 +136,7 @@ class CameraTracker:
         feature_mask[:, :margin_x] = 0
         feature_mask[:, w - margin_x :] = 0
 
-        # 排除人脸区域
+        # 排除人脸区域 (Exclude the face region)
         feature_mask[face_mask > 0] = 0
 
         points = cv2.goodFeaturesToTrack(
@@ -149,12 +149,12 @@ class CameraTracker:
             useHarrisDetector=False,
         )
 
-        return points  # N x 1 x 2 或 None
+        return points  # N x 1 x 2 或 None (N x 1 x 2 or None)
 
     def _reset_tracking(self, gray, face_mask=None, inherit_dy=0.0):
         """
-        重新寻找特征点。
-        如果指定了 inherit_dy，则新特征点的 base_y 将继承之前的位移历史 (Handover)。
+        重新寻找特征点。 (Re-finds feature points.)
+        如果指定了 inherit_dy，则新特征点的 base_y 将继承之前的位移历史 (Handover)。 (If inherit_dy is specified, the new feature points' base_y inherits the previous displacement history (Handover).)
         """
         if face_mask is None:
             face_mask = self._detect_face_mask(gray)
@@ -167,14 +167,14 @@ class CameraTracker:
             return False
 
         self._points = points.astype(np.float32)
-        # 核心继承逻辑: base_y = current_y - dy
+        # 核心继承逻辑: base_y = current_y - dy (Core inheritance logic: base_y = current_y - dy)
         current_ys = points[:, 0, 1]
         self._base_ys = current_ys - inherit_dy
         self._prev_gray = gray.copy()
         return True
 
     def _calculate_angle_from_displacement(self, dy):
-        """根据纵向位移 dy 计算开合比例 0.0 ~ 1.0。"""
+        """根据纵向位移 dy 计算开合比例 0.0 ~ 1.0。 (Computes the folding ratio 0.0 ~ 1.0 from the vertical displacement dy.)"""
         displacement = abs(dy)
         ratio = np.clip(
             displacement / self._max_vertical_displacement,
@@ -199,20 +199,20 @@ class CameraTracker:
         has_face = np.count_nonzero(face_mask) > (gray.shape[0] * gray.shape[1] * 0.02)
 
         # ============================================================
-        # 1. 人脸检测最高优先级
+        # 1. 人脸检测最高优先级 (1. Face detection has the highest priority)
         # ============================================================
         if has_face:
             self._smooth = self._smooth * (1.0 - FACE_ALPHA) + 1.0 * FACE_ALPHA
             with self._lock:
                 self.current_angle = float(np.clip(self._smooth, 0.0, 1.0))
 
-            self._last_dy = 0.0  # 人脸出现归位，位移重置为 0
+            self._last_dy = 0.0  # 人脸出现归位，位移重置为 0 (Face appeared -> reset, displacement reset to 0)
 
             if self._points is None or self._base_ys is None:
                 self._prev_gray = gray.copy()
                 self._reset_tracking(gray, face_mask, inherit_dy=0.0)
             else:
-                # 人脸期间持续维护已有角点的光流跟踪，但不更新 _base_ys
+                # 人脸期间持续维护已有角点的光流跟踪，但不更新 _base_ys (During face presence, keep maintaining optical-flow tracking of existing corners but do not update _base_ys)
                 next_points, status, _ = cv2.calcOpticalFlowPyrLK(
                     self._prev_gray,
                     gray,
@@ -256,7 +256,7 @@ class CameraTracker:
             return
 
         # ============================================================
-        # 2. 无人脸：多点跟踪与无缝基准继承 (方案2)
+        # 2. 无人脸：多点跟踪与无缝基准继承 (方案2) (2. No face: multi-point tracking and seamless baseline handover (Scheme 2))
         # ============================================================
         if self._prev_gray is None or self._points is None or self._base_ys is None:
             self._prev_gray = gray.copy()
@@ -264,7 +264,7 @@ class CameraTracker:
                 return
             return
 
-        # 计算 LK 光流
+        # 计算 LK 光流 (Compute LK optical flow)
         next_points, status, _ = cv2.calcOpticalFlowPyrLK(
             self._prev_gray,
             gray,
@@ -290,7 +290,7 @@ class CameraTracker:
             for i, pt in enumerate(next_points):
                 if status[i, 0] == 1:
                     px, py = pt[0]
-                    # 剔除移出画面或进入安全边界外的点
+                    # 剔除移出画面或进入安全边界外的点 (Discard points that left the frame or entered outside the safety boundary)
                     if (
                         margin_x <= px < w - margin_x
                         and margin_y <= py < h - margin_y
@@ -302,10 +302,10 @@ class CameraTracker:
                         valid_bases.append(self._base_ys[i])
 
         # ------------------------------------------------------------
-        # 核心判断逻辑
+        # 核心判断逻辑 (Core decision logic)
         # ------------------------------------------------------------
         if len(valid_pts) >= self._min_corners:
-            # A. 存活点数量充足：保留有效点，使用中位数计算 dy
+            # A. 存活点数量充足：保留有效点，使用中位数计算 dy (A. Enough surviving points: keep valid points and compute dy using the median)
             self._points = np.array(valid_pts, dtype=np.float32)
             self._base_ys = np.array(valid_bases, dtype=np.float32)
             self._prev_gray = gray.copy()
@@ -313,17 +313,17 @@ class CameraTracker:
             self._last_dy = float(np.median(valid_dys))
 
         else:
-            # B. 存活点不足（或点移出画面全灭）：触发无缝接力补点 (Baseline Handover)
+            # B. 存活点不足（或点移出画面全灭）：触发无缝接力补点 (Baseline Handover) (B. Too few surviving points (or all points left the frame): trigger seamless relay re-seeding (Baseline Handover))
             self._prev_gray = gray.copy()
-            # 在当前位置寻找新点，并让新点继承上一帧的 _last_dy
+            # 在当前位置寻找新点，并让新点继承上一帧的 _last_dy (Find new points at the current position and let them inherit the previous frame's _last_dy)
             if not self._reset_tracking(gray, face_mask, inherit_dy=self._last_dy):
-                # 如果暂时找不到新点，则保留最后的 _last_dy 冻结当前角度，不发生跳变
+                # 如果暂时找不到新点，则保留最后的 _last_dy 冻结当前角度，不发生跳变 (If no new points can be found for now, keep the last _last_dy to freeze the current angle so no jump occurs)
                 pass
 
-        # 根据最新（或继承冻结的）dy 计算角度
+        # 根据最新（或继承冻结的）dy 计算角度 (Compute the angle from the latest (or inherited/frozen) dy)
         raw = self._calculate_angle_from_displacement(self._last_dy)
 
-        # 指数平滑
+        # 指数平滑 (Exponential smoothing)
         alpha = SMOOTH_ALPHA
 
         if abs(raw - self._smooth) < 0.008:
@@ -334,8 +334,10 @@ class CameraTracker:
         with self._lock:
             self.current_angle = float(np.clip(self._smooth, 0.0, 1.0))
 
+        # 已废弃的旧写法：旧的平滑赋值 (Deprecated old approach: the former smoothing assignment)
         # self._smooth = self._smooth * (1.0 - alpha) + raw * alpha
 
+        # 已废弃的旧写法：旧的写锁与角度裁剪赋值 (Deprecated old approach: the former lock-protected angle-clipping assignment)
         # with self._lock:
         #    self.current_angle = float(np.clip(self._smooth, 0.0, 1.0))
 

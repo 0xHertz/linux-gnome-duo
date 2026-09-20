@@ -15,6 +15,8 @@ const SIGTERM = 15;
 const DAEMON_RETRY_MS = 1000;
 const DEMO_MODE = false;
 
+// 本扩展通过旋转与模糊图层折叠 GNOME Shell 的 UI 组，折叠角度由套接字连接的守护进程提供的盖子角度驱动。
+// This extension folds the GNOME Shell UI group via rotation and blur layers, driven by a lid angle from a socket-connected daemon.
 export default class DuoFoldExtension extends Extension {
     enable() {
         this._settings = this.getSettings('org.gnome.shell.extensions.linux-duo');
@@ -128,7 +130,7 @@ export default class DuoFoldExtension extends Extension {
                         readLine();
                     }
                 } catch (e) {
-                    // pipe closed
+                    // 管道已关闭 (pipe closed)
                 }
             });
         };
@@ -161,7 +163,7 @@ export default class DuoFoldExtension extends Extension {
             const outputStream = this._socketConn.get_output_stream();
             outputStream.write_all(`RESET:${val}\n`, null);
         } catch (e) {
-            // ignore output errors
+            // 忽略输出错误 (ignore output errors)
         }
     }
 
@@ -282,7 +284,7 @@ export default class DuoFoldExtension extends Extension {
             const t = item.index / Math.max(1, this._blurLayerCount - 1);
             const verticalFactor = Math.pow(1.0 - t, 1.35);
 
-            // 顶部最大，向下逐渐减弱；同时折叠越小，整体模糊越强。
+            // 顶部最大，向下逐渐减弱；同时折叠越小，整体模糊越强。(Maximum at the top, fading downward; the smaller the fold, the stronger the overall blur.)
             const radius = this._maxBlurRadius * strength * angleFactor *
                 (0.08 + 0.92 * verticalFactor);
 
@@ -309,7 +311,7 @@ export default class DuoFoldExtension extends Extension {
             try {
                 this._dataStream.close(null);
             } catch (e) {
-                // close() reports PENDING while a read_line_async is still in flight
+                // 当 read_line_async 仍在进行时，close() 会报告 PENDING (close() reports PENDING while a read_line_async is still in flight)
             }
             this._dataStream = null;
         }
@@ -317,7 +319,7 @@ export default class DuoFoldExtension extends Extension {
             try {
                 this._socketConn.close(null);
             } catch (e) {
-                // ignore teardown errors
+                // 忽略清理错误 (ignore teardown errors)
             }
             this._socketConn = null;
         }
@@ -343,7 +345,7 @@ export default class DuoFoldExtension extends Extension {
             try {
                 item.layer.destroy();
             } catch (e) {
-                // ignore teardown errors
+                // 忽略清理错误 (ignore teardown errors)
             }
         }
         this._blurLayers = [];

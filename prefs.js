@@ -17,8 +17,8 @@ export default class LinuxDuoPreferences extends ExtensionPreferences {
         model.append('sonar');
 
         const row = new Adw.ComboRow({
-            title: '检测方案',
-            subtitle: '选择开合角度检测方案（默认摄像头）',
+            title: '检测方案 (Detection Method)',
+            subtitle: '选择开合角度检测方案（默认摄像头） (Choose the lid-angle detection method, default: camera)',
         });
         row.model = model;
         row.selected = settings.get_string('method') === 'sonar' ? 1 : 0;
@@ -28,8 +28,8 @@ export default class LinuxDuoPreferences extends ExtensionPreferences {
         group.add(row);
 
         const blurRow = new Adw.SpinRow({
-            title: '模糊强度',
-            subtitle: '折叠时屏幕顶部的模糊程度（越大越模糊，底部逐渐减弱）',
+            title: '模糊强度 (Blur Strength)',
+            subtitle: '折叠时屏幕顶部的模糊程度（越大越模糊，底部逐渐减弱） (Blur amount at the top of the screen when folded; higher means blurrier, fading toward the bottom)',
             adjustment: new Gtk.Adjustment({
                 lower: 0.0,
                 upper: 0.2,

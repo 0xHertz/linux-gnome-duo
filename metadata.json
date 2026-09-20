@@ -2,7 +2,7 @@
   "uuid": "linux-duo@kechen.github",
   "settings-schema": "org.gnome.shell.extensions.linux-duo",
   "name": "Duo Fold Animation",
-  "description": "iPhone/Duo style parallax and gradient blur fold animation driven by lid angle (camera or ultrasonic).",
+  "description": "iPhone/Duo 风格的视差与渐变模糊折叠动画，由盖角（摄像头或超声波）驱动。 (iPhone/Duo style parallax and gradient blur fold animation driven by lid angle (camera or ultrasonic).)",
   "shell-version": ["45", "46"],
   "version": 1.0
 }
